@@ -3,9 +3,16 @@ import { Zap, GitBranch, Play, Plus, CheckCircle2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { workflowTemplates } from '@/lib/mockData';
 import { executeWorkflow, loadExecutionHistory, loadSavedWorkflows, saveWorkflow } from '@/services/workflowEngine';
-import type { Workflow, WorkflowExecutionEntry, WorkflowNode, WorkflowTemplate } from '@/types';
+import type { Workflow, WorkflowExecutionEntry, WorkflowNode, WorkflowNodeConfig, WorkflowTemplate } from '@/types';
 
-const nodePalette = [
+type WorkflowPaletteItem = Omit<WorkflowNode, 'id' | 'x' | 'y'>;
+
+type WorkflowPaletteGroup = {
+  category: string;
+  items: WorkflowPaletteItem[];
+};
+
+const nodePalette: WorkflowPaletteGroup[] = [
   {
     category: 'Triggers',
     items: [
@@ -293,7 +300,7 @@ export function WorkflowBuilder() {
     toast.success(`Execution ${result.status}`, { description: result.summary });
   };
 
-  const addNodeToCanvas = (item: { type: WorkflowNode['type']; label: string; description: string; config: Record<string, string> }) => {
+  const addNodeToCanvas = (item: WorkflowPaletteItem) => {
     const nextNode: WorkflowNode = {
       id: generateId('node'),
       type: item.type,

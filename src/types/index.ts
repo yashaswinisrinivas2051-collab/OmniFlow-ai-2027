@@ -264,6 +264,8 @@ export interface Campaign {
 // ─── NEW: Workflow Node ────────────────────────────────────────────────────
 export type WorkflowNodeType = 'trigger' | 'condition' | 'action';
 
+export type WorkflowNodeConfig = Record<string, string | undefined>;
+
 export interface WorkflowNode {
   id: string;
   type: WorkflowNodeType;
@@ -271,7 +273,7 @@ export interface WorkflowNode {
   description: string;
   x: number;
   y: number;
-  config: Record<string, string>;
+  config: WorkflowNodeConfig;
 }
 
 export interface WorkflowEdge {
