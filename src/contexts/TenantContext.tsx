@@ -90,7 +90,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const saasMetrics = useMemo(
     () => ({
       totalTenants: tenantList.length,
-      activeTenants: tenantList.filter((t) => t.plan !== 'trial').length,
+      activeTenants: tenantList.length,
       MRR: tenantList.reduce((sum, item) => sum + item.mrr, 0),
       ARR: tenantList.reduce((sum, item) => sum + item.arr, 0),
       tenantGrowth: Math.round(tenantList.reduce((sum, item) => sum + item.growth, 0) / tenantList.length),

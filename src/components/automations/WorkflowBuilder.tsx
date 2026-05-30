@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Zap, GitBranch, Play, Plus, CheckCircle2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { workflowTemplates } from '@/lib/mockData';
@@ -154,7 +155,7 @@ export function WorkflowBuilder() {
   }, [selectedWorkflowId, workflows]);
 
   useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
+    const handlePointerMove = (event: globalThis.PointerEvent) => {
       if (dragState.current) {
         const { nodeId, startX, startY, originX, originY } = dragState.current;
         const node = currentWorkflow.nodes.find((item) => item.id === nodeId);
@@ -385,7 +386,7 @@ export function WorkflowBuilder() {
     }
   };
 
-  const startNodeDrag = (event: PointerEvent<HTMLDivElement>, nodeId: string) => {
+  const startNodeDrag = (event: ReactPointerEvent<HTMLDivElement>, nodeId: string) => {
     event.stopPropagation();
     const node = currentWorkflow.nodes.find((item) => item.id === nodeId);
     if (!node) return;
@@ -398,7 +399,7 @@ export function WorkflowBuilder() {
     };
   };
 
-  const startPanning = (event: PointerEvent<HTMLDivElement>) => {
+  const startPanning = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target !== canvasRef.current) return;
     event.preventDefault();
     panState.current = { startX: event.clientX, startY: event.clientY };

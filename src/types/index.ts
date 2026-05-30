@@ -183,7 +183,7 @@ export interface TenantInfo {
   companyName: string;
   logo: string;
   accentColor: string;
-  plan: string;
+  plan: SubscriptionPlan;
   activeUsers: number;
   createdAt: string;
   role: TenantRole;
