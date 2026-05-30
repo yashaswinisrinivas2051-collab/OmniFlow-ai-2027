@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "OmniFlow AI API",
-    "description": "Complete API collection for OmniFlow AI backend\n\n## Setup\n1. Set `baseUrl` variable to `http://localhost:3001`\n2. For demo mode (no Firebase): Set `DEMO_MODE=true` in server/.env\n3. For Firebase: set `token` variable with a valid Firebase ID token\n\n## Demo Mode\nWhen Firebase is not configured, all endpoints work with in-memory mock data.\nAuth endpoints accept any email/password and return a fake token.\nUse `Bearer demo-token-123` in Auth header.",
+    "description": "Complete API collection for OmniFlow AI backend\n\n## Setup\n1. Set `baseUrl` variable to `https://omniflow-ai.onrender.com`\n2. For demo mode (no Firebase): Set `DEMO_MODE=true` in server/.env\n3. For Firebase: set `token` variable with a valid Firebase ID token\n\n## Demo Mode\nWhen Firebase is not configured, all endpoints work with in-memory mock data.\nAuth endpoints accept any email/password and return a fake token.\nUse `Bearer demo-token-123` in Auth header.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3001",
+      "value": "https://omniflow-ai.onrender.com",
       "type": "string"
     },
     {
