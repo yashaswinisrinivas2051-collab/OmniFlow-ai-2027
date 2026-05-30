@@ -1,25 +1,108 @@
 import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Filter, Search, X, Phone, Mail, Building2, Sparkles } from 'lucide-react';
+import { Download, Filter, Search, X, Phone, Mail, Building2, Sparkles, RefreshCw, AlertCircle, Users, Target, TrendingUp, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, GlassCard } from '@/components/ui-kit/Card';
-import { channelMeta, leads as seed, type Lead } from '@/lib/mockData';
+import { SkeletonTable } from '@/components/ui-kit/Skeleton';
+import { EmptyState } from '@/components/ui-kit/EmptyState';
+import { channelMeta } from '@/types';
+import type { Lead } from '@/types';
+import { useUpdateLead } from '@/hooks/useLeads';
+import { useLeadsContext } from '@/contexts/LeadsContext';
+import { useAiLeadScore } from '@/hooks/useAi';
+import { LeadScoringModal } from '@/components/leads/LeadScoringModal';
+import { SmartRecommendationCard } from '@/components/crm/SmartRecommendationCard';
+import { RecommendationTimeline } from '@/components/crm/RecommendationTimeline';
 
 export function LeadsPage() {
   const [q, setQ] = useState('');
   const [priority, setPriority] = useState<string>('all');
   const [active, setActive] = useState<Lead | null>(null);
+  const [scoringLeadId, setScoringLeadId] = useState<string | null>(null);
 
+  const {
+    leads: leadsData,
+    loading,
+    error,
+    refetch,
+    syncToSheets,
+    syncLoading,
+    syncStatus,
+    lastSyncAt,
+    totalSyncedRows,
+    syncHistory,
+  } = useLeadsContext();
+  const { update: updateLead } = useUpdateLead();
+  const { score: scoreLead, loading: scoringLoading, result: scoreResult } = useAiLeadScore();
+
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const locationState = location.state as { openLeadId?: string } | null;
+  const deepLinkHandled = useRef(false);
+
+  const leadsList = leadsData ?? [];
+
+  // Client-side filtering for priority + search
   const filtered = useMemo(
-    () =>
-      seed.filter(
-        (lead) =>
-          (priority === 'all' || lead.priority === priority) &&
-          (q === '' || lead.name.toLowerCase().includes(q.toLowerCase()) || lead.company.toLowerCase().includes(q.toLowerCase())),
-      ),
-    [priority, q],
+    () => {
+      let result = leadsList;
+      if (priority !== 'all') {
+        result = result.filter((lead) => lead.priority === priority);
+      }
+      if (q) {
+        result = result.filter(
+          (lead) =>
+            lead.name.toLowerCase().includes(q.toLowerCase()) ||
+            lead.company.toLowerCase().includes(q.toLowerCase()),
+        );
+      }
+      return result;
+    },
+    [leadsList, q, priority],
   );
+
+  // Auto-open lead from location state (e.g., navigated from inbox)
+  useEffect(() => {
+    if (locationState?.openLeadId && leadsList.length > 0) {
+      const found = leadsList.find((l) => l.id === locationState.openLeadId);
+      if (found) {
+        setActive(found);
+        window.history.replaceState({}, '');
+      }
+    }
+  }, [locationState?.openLeadId, leadsList]);
+
+  // Deep link: /leads?id=456
+  useEffect(() => {
+    const leadId = searchParams.get('id');
+    const fallbackName = searchParams.get('name');
+    if (!leadId) {
+      deepLinkHandled.current = false;
+      return;
+    }
+    if (loading || leadsList.length === 0) return;
+
+    const found =
+      leadsList.find((l) => l.id === leadId) ??
+      (fallbackName ? leadsList.find((l) => l.name === fallbackName) : undefined);
+    if (found) {
+      setActive(found);
+      setQ('');
+      setPriority('all');
+      requestAnimationFrame(() => {
+        document.getElementById(`lead-row-${found.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
+    }
+
+    if (!deepLinkHandled.current) {
+      deepLinkHandled.current = true;
+      toast.error('Related item not found');
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, leadsList, loading, setSearchParams]);
 
   const exportCSV = () => {
     const csv = [
@@ -40,16 +123,47 @@ export function LeadsPage() {
     toast.success('Exported leads.csv');
   };
 
+  if (loading && !leadsData) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="glass rounded-2xl p-5">
+          <SkeletonTable rows={6} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col items-center justify-center py-32">
+          <AlertCircle className="w-10 h-10 text-rose-400 mx-auto" />
+          <p className="mt-4 text-sm text-rose-300 font-medium">Failed to load leads</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+          <button onClick={refetch} className="mt-4 px-4 h-10 rounded-xl glass text-sm hover:bg-white/10 transition">Try again</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Leads</h1>
-          <p className="text-sm text-muted-foreground mt-1">Auto-captured from every conversation · {filtered.length} of {seed.length}</p>
+          <p className="text-sm text-muted-foreground mt-1">Auto-captured from every conversation · {filtered.length} of {leadsList.length}</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => toast('Google Sheets sync queued')} className="h-10 px-4 rounded-xl glass hover:bg-white/10 text-sm flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-accent" /> Sync to Sheets
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={refetch} className="h-10 px-4 rounded-xl glass hover:bg-white/10 text-sm flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+          <button
+            onClick={syncToSheets}
+            disabled={syncLoading}
+            className="h-10 px-4 rounded-xl glass hover:bg-white/10 text-sm flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Sparkles className="w-4 h-4 text-accent" />
+            {syncLoading ? 'Syncing leads to Google Sheets...' : syncStatus === 'synced' ? 'Synced ✓' : 'Sync to Sheets'}
           </button>
           <button onClick={exportCSV} className="h-10 px-4 rounded-xl grad-primary text-white text-sm font-semibold flex items-center gap-2">
             <Download className="w-4 h-4" /> Export CSV
@@ -57,7 +171,55 @@ export function LeadsPage() {
         </div>
       </div>
 
-      <GlassCard className="p-4">
+      <GlassCard className="p-4 grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="space-y-3">
+          <div>
+            <div className="text-sm text-muted-foreground">Google Sheets sync</div>
+            <h2 className="text-xl font-semibold mt-1">Lead sync status</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl glass p-4">
+              <div className="text-[11px] uppercase text-muted-foreground tracking-[0.24em] mb-2">Last sync</div>
+              <div className="text-sm font-semibold">{lastSyncAt ?? 'Never'}</div>
+            </div>
+            <div className="rounded-2xl glass p-4">
+              <div className="text-[11px] uppercase text-muted-foreground tracking-[0.24em] mb-2">Total rows</div>
+              <div className="text-sm font-semibold">{totalSyncedRows.toLocaleString()}</div>
+            </div>
+            <div className="rounded-2xl glass p-4 col-span-2">
+              <div className="text-[11px] uppercase text-muted-foreground tracking-[0.24em] mb-2">Sync status</div>
+              <div className="text-sm font-semibold capitalize">{syncStatus}</div>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl glass p-4 overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-sm font-semibold">History</div>
+              <div className="text-xs text-muted-foreground">Last 10 operations</div>
+            </div>
+          </div>
+          {syncHistory.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No sync operations yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {syncHistory.map((entry) => (
+                <div key={entry.id} className="rounded-2xl glass p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">{entry.time}</div>
+                    <div className="text-xs text-muted-foreground">{entry.rowsSynced} rows</div>
+                  </div>
+                  <span className={`text-[11px] px-2 py-1 rounded-full ${entry.status === 'success' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}`}>
+                    {entry.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </GlassCard>
+
+      <GlassCard className="p-0 overflow-hidden">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex-1 min-w-[200px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -101,11 +263,14 @@ export function LeadsPage() {
               {filtered.map((lead, index) => (
                 <motion.tr
                   key={lead.id}
+                  id={`lead-row-${lead.id}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.02 }}
                   onClick={() => setActive(lead)}
-                  className="border-t border-white/5 hover:bg-white/3 cursor-pointer transition"
+                  className={`border-t border-white/5 hover:bg-white/3 cursor-pointer transition ${
+                    active?.id === lead.id ? 'bg-primary/10 ring-1 ring-inset ring-primary/30' : ''
+                  }`}
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
@@ -172,17 +337,78 @@ export function LeadsPage() {
                 <Stat label="Priority" value={active.priority} />
                 <Stat label="Status" value={active.status} />
               </div>
+
+              {/* AI Scoring Breakdown Button */}
+              <button
+                onClick={() => setScoringLeadId(active.id)}
+                className="mt-4 w-full h-10 rounded-xl grad-primary text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition active:scale-[0.98]"
+              >
+                <Target className="w-4 h-4" />
+                View AI Scoring Breakdown
+              </button>
               <div className="mt-6 space-y-2 text-sm">
                 <InfoRow icon={<Mail className="w-4 h-4" />} text={active.email} />
                 <InfoRow icon={<Phone className="w-4 h-4" />} text={active.phone} />
                 <InfoRow icon={<Building2 className="w-4 h-4" />} text={active.company} />
               </div>
               <div className="mt-6">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">AI summary</div>
-                <p className="text-sm leading-relaxed glass rounded-xl p-4">
-                  {active.name} engaged via {channelMeta[active.channel].label} {active.createdAt}, asking about enterprise pricing. Strong purchase intent — Gemini classified as <b>{active.priority}</b>. Suggested next step: book a 20-min discovery call.
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-xs uppercase tracking-widest text-muted-foreground">AI scoring</div>
+                  <button
+                    onClick={() => {
+                      const mockHistory = [
+                        { role: 'user', text: 'Hi, interested in your product.' },
+                        { role: 'ai', text: "I'd be happy to help! What caught your eye?" },
+                      ];
+                      scoreLead(active.id, mockHistory);
+                    }}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-medium transition ${scoringLoading ? 'glass opacity-60' : 'glass hover:bg-white/10'}`}
+                    disabled={scoringLoading}
+                  >
+                    {scoringLoading ? 'Scoring…' : 'Re-score with AI'}
+                  </button>
+                </div>
+                <div className="glass rounded-xl p-4 space-y-3">
+                  {scoreResult ? (
+                    <>
+                      <p className="text-sm leading-relaxed">{scoreResult.summary}</p>
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40">
+                        <div>
+                          <span className="text-[10px] uppercase text-muted-foreground">Score</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                              <div className="h-full grad-primary" style={{ width: scoreResult.score + '%' }} />
+                            </div>
+                            <span className="text-sm font-semibold">{scoreResult.score}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-muted-foreground">Priority</span>
+                          <div className="mt-0.5">
+                            <Badge tone={scoreResult.priority === 'hot' ? 'danger' : scoreResult.priority === 'warm' ? 'warning' : 'info'}>
+                              {scoreResult.priority}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      {scoreResult.suggestedAction && (
+                        <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-2">
+                          Suggested: {scoreResult.suggestedAction}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm leading-relaxed">
+                      {active.name} engaged via {channelMeta[active.channel].label}. Gemini classified as <b>{active.priority}</b> (score: {active.aiScore}). Click <b>Re-score</b> for detailed AI analysis.
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Smart CRM Recommendations */}
+              <SmartRecommendationCard leadId={active.id} compact className="mt-6" />
+              <RecommendationTimeline leadId={active.id} />
+
               <div className="mt-6 grid grid-cols-2 gap-2">
                 <button onClick={() => toast.success('Email drafted by AI')} className="h-10 rounded-xl glass hover:bg-white/10 text-sm">
                   Draft email
@@ -195,6 +421,14 @@ export function LeadsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AI Lead Scoring Modal */}
+      <LeadScoringModal
+        leadId={scoringLeadId ?? ''}
+        open={scoringLeadId !== null}
+        onClose={() => setScoringLeadId(null)}
+      />
+
     </div>
   );
 }

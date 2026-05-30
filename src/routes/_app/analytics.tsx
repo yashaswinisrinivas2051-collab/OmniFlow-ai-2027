@@ -1,6 +1,12 @@
-import { AreaChart, Area, BarChart, Bar, LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell } from 'recharts';
+import { useState } from 'react';
+import { AreaChart, Area, BarChart, Bar, LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { GlassCard, Badge } from '@/components/ui-kit/Card';
-import { messageVolume, leadGrowth, channelShare, aiActivity } from '@/lib/mockData';
+import { SkeletonCard } from '@/components/ui-kit/Skeleton';
+import { ChannelShareChart } from '@/components/analytics/ChannelShareChart';
+import { CrmAnalyticsWidget } from '@/components/crm/TopRecommendationsWidget';
+import { messageVolume, leadGrowth, channelShare as fallbackChannelShare, aiActivity } from '@/lib/mockData';
+import { useAnalytics } from '@/hooks/useDashboard';
+import { RefreshCw } from 'lucide-react';
 
 const tooltipStyle = {
   background: 'oklch(0.21 0.03 270)',
@@ -17,6 +23,32 @@ const kpis = [
 ];
 
 export function AnalyticsPage() {
+  const { data: analytics, loading: analyticsLoading } = useAnalytics();
+  const [loading] = useState(false);
+
+  const channelShareData = analytics?.channelShare ?? fallbackChannelShare;
+  const messageVolumeData = analytics?.messageVolume ?? messageVolume;
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="glass rounded-2xl p-5">
+              <div className="skeleton h-5 w-40 mb-4" />
+              <div className="skeleton h-72 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -35,6 +67,11 @@ export function AnalyticsPage() {
             <Badge tone={kpi.tone} className="mt-2">{kpi.delta}</Badge>
           </GlassCard>
         ))}
+      </div>
+
+      <div>
+        <h3 className="font-semibold mb-3">Smart CRM Recommendations</h3>
+        <CrmAnalyticsWidget />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -78,19 +115,20 @@ export function AnalyticsPage() {
 
         <GlassCard>
           <h3 className="font-semibold mb-1">Channel share</h3>
-          <p className="text-xs text-muted-foreground mb-4">Total conversations</p>
-          <div className="h-72">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={channelShare} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={4} label={{ fontSize: 11, fill: 'oklch(0.9 0.01 270)' }}>
-                  {channelShare.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} stroke="transparent" />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="text-xs text-muted-foreground mb-4">Distribution of conversations by channel</p>
+          {analyticsLoading ? (
+            <div className="space-y-4">
+              <div className="skeleton h-24 w-full rounded-xl" />
+              <div className="skeleton h-52 w-full rounded-xl" />
+              <div className="grid grid-cols-2 gap-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="skeleton h-10 rounded-xl" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ChannelShareChart data={channelShareData} messageVolume={messageVolumeData} />
+          )}
         </GlassCard>
 
         <GlassCard>

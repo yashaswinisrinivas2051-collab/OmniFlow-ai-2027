@@ -6,26 +6,44 @@ import { toast } from 'sonner';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const currentYear = new Date().getFullYear();
   const [email, setEmail] = useState('alex@acme.com');
   const [password, setPassword] = useState('demo1234');
   const [loading, setLoading] = useState(false);
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('omniflow_auth', '1');
-      toast.success('Welcome back, Alex');
-      navigate('/dashboard');
-    }, 700);
+
+    // Demo mode — bypass Firebase Auth, accept any credentials
+    localStorage.setItem('omniflow_auth', '1');
+    localStorage.setItem('omniflow_token', 'demo-token-123');
+    localStorage.setItem('omniflow_userId', 'demo-agent-001');
+    localStorage.setItem('omniflow_userName', 'Alex');
+
+    // Try to authenticate with backend, but don't block on failure
+    try {
+      await fetch(import.meta.env.VITE_API_URL + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      // Backend may not have Firebase — demo continues regardless
+    }
+
+    toast.success('Welcome back, Alex');
+    setLoading(false);
+    navigate('/dashboard');
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="min-h-screen grid lg:grid-cols-2 animate-fade-in">
       <div className="hidden lg:flex relative flex-col justify-between p-12 overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-primary/30 blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-accent/20 blur-3xl" />
+          <div className="absolute -bottom-20 -right-20 w-[400px] h-[400px] rounded-full bg-accent/20 blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl" />
         </div>
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl grad-primary grid place-items-center ring-glow">
@@ -36,32 +54,38 @@ export function LoginPage() {
             <div className="text-xs uppercase tracking-widest text-muted-foreground">AI Suite</div>
           </div>
         </div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="max-w-md">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="max-w-md">
           <h1 className="text-5xl font-bold leading-tight">
             One inbox.<br />
             <span className="grad-text">Every channel.</span><br />
-            Zero waiting.
+            <span className="grad-text">Zero waiting.</span>
           </h1>
           <p className="mt-5 text-muted-foreground leading-relaxed">
             Gemini-powered conversations across WhatsApp, Instagram, Facebook, LinkedIn,
             web chat, and AI voice — closing leads while you sleep.
           </p>
-          <div className="mt-8 flex flex-wrap gap-2">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-8 flex flex-wrap gap-2">
             {['WhatsApp', 'Instagram', 'LinkedIn', 'Voice AI', 'Web Chat', 'Auto Lead Capture'].map((tag) => (
-              <span key={tag} className="px-3 py-1.5 rounded-full glass text-xs">
+              <span key={tag} className="px-3 py-1.5 rounded-full glass text-xs hover:scale-105 transition-transform">
                 {tag}
               </span>
             ))}
-          </div>
+          </motion.div>
         </motion.div>
-        <div className="text-xs text-muted-foreground">© 2025 OmniFlow AI · Built for hackathon demo</div>
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>
+            © {currentYear} OmniFlow AI · AI-Powered Customer Communication Platform. All rights reserved.
+          </p>
+          <p>Built with Gemini AI • Multi-Channel Customer Engagement Platform</p>
+        </div>
       </div>
 
       <div className="flex items-center justify-center p-6 lg:p-12">
         <motion.form
           onSubmit={submit}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.15, type: 'spring', damping: 22 }}
           className="w-full max-w-md glass-strong rounded-3xl p-8 ring-glow"
         >
           <div className="flex items-center gap-2 text-xs text-accent mb-3">
