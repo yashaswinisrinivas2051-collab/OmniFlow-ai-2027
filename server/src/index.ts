@@ -12,15 +12,13 @@ import { setupSocket } from './socket/index.js';
 dotenv.config();
 
 const PORT = Number(process.env.PORT) || 3001;
-// Allow multiple origins: localhost for development, Vercel for production
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5174';
-const ALLOWED_ORIGINS = [
-  'http://localhost:5174',
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'https://omni-flow-ai-2027.vercel.app',
-  CORS_ORIGIN
-].filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+// Allow multiple origins: localhost for development, all Vercel deployments for production
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://omni-flow-ai-2027.vercel.app"
+];
 
 async function main() {
   console.log('\n═══════════════════════════════════════════');
@@ -55,17 +53,19 @@ async function main() {
   const httpServer = createServer(app);
 
   app.use(cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
+    origin: function(origin, callback) {
       if (!origin) return callback(null, true);
-      
-      if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.includes(".vercel.app")
+      ) {
+        return callback(null, true);
       }
+
+      return callback(new Error("CORS not allowed"));
     },
-    credentials: true,
+    credentials: true
   }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
@@ -95,7 +95,7 @@ async function main() {
     console.log('  Server:    http://localhost:' + PORT);
     console.log('  Health:    http://localhost:' + PORT + '/api/health');
     console.log('  Socket:    ws://localhost:' + PORT + '/chat');
-    console.log('  CORS:      ' + CORS_ORIGIN);
+    console.log('  CORS:      Allowing localhost and *.vercel.app');
     console.log('─────────────────────────────────────────────\n');
   });
 }

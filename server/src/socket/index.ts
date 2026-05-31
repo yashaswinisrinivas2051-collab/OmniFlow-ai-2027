@@ -53,9 +53,27 @@ function getOnlineUsers(conversationId: string): string[] {
 
 // ─── Socket Setup ──────────────────────────────────────────────────────────
 export function setupSocket(httpServer: HttpServer): Server<ClientToServerEvents, ServerToClientEvents> {
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://omni-flow-ai-2027.vercel.app"
+  ];
+
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5174',
+      origin: function(origin, callback) {
+        if (!origin) return callback(null, true);
+
+        if (
+          allowedOrigins.includes(origin) ||
+          origin.includes(".vercel.app")
+        ) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("CORS not allowed"));
+      },
       credentials: true,
     },
   });
