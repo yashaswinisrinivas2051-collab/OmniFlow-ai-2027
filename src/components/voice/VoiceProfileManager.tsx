@@ -27,7 +27,8 @@ export function VoiceProfileSelector({ onSelect }: { onSelect?: (id: string) => 
   async function fetchProfiles() {
     setLoading(true);
     try {
-      const res = await fetch('/api/voice-profiles');
+      const apiUrl = (import.meta.env.VITE_API_URL || 'https://omniflow-ai.onrender.com') + '/api/voice-profiles';
+      const res = await fetch(apiUrl);
       const json = await res.json();
       if (json.success) {
         setProfiles(json.data || []);
@@ -159,7 +160,8 @@ function VoiceProfileManagerModal({ onClose }: { onClose: () => void }) {
       fd.append('gender', gender);
       if (sample) fd.append('sample', sample, sample.name);
 
-      const res = await fetch('/api/voice-profiles', { method: 'POST', body: fd });
+      const apiUrl = (import.meta.env.VITE_API_URL || 'https://omniflow-ai.onrender.com') + '/api/voice-profiles';
+      const res = await fetch(apiUrl, { method: 'POST', body: fd });
       const json = await res.json();
       if (json.success) {
         toast.success('Voice profile created');
