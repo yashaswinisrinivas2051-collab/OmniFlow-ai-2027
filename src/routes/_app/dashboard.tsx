@@ -82,12 +82,18 @@ export function DashboardPage() {
   }
 
   if (error) {
+    const isColdStart = error === 'Network Error' || error.includes('timeout');
     return (
       <div className="space-y-6">
         <div className="flex flex-col items-center justify-center py-32">
           <AlertCircle className="w-10 h-10 text-rose-400 mx-auto" />
           <p className="mt-4 text-sm text-rose-300 font-medium">Failed to load dashboard</p>
           <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+          {isColdStart && (
+            <p className="mt-2 text-xs text-muted-foreground/70 max-w-sm text-center">
+              The backend server may be waking up from a cold start. This usually takes 30–60 seconds on the first request.
+            </p>
+          )}
           <button onClick={refetch} className="mt-4 px-4 h-10 rounded-xl glass text-sm hover:bg-white/10 transition">
             Try again
           </button>
