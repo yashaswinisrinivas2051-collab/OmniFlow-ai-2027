@@ -23,7 +23,7 @@ export function LoginPage() {
 
     // Try to authenticate with backend, but don't block on failure
     try {
-      await fetch(import.meta.env.VITE_API_URL + '/api/auth/login', {
+      await fetch((import.meta.env.VITE_API_URL || 'https://omniflow-ai.onrender.com') + '/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

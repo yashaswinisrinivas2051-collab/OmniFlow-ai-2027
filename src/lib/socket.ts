@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { ServerToClientEvents, ClientToServerEvents } from '@/types/socket';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'wss://omniflow-ai.onrender.com';
 
 let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 
