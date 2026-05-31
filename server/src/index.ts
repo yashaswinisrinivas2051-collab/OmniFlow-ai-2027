@@ -77,6 +77,16 @@ async function main() {
 
   app.use('/api', apiRoutes);
 
+  // Root health check endpoint for hosting providers
+  app.get('/', (_req, res) => {
+    res.json({
+      success: true,
+      message: 'OmniFlow AI API — Backend Server is running.',
+      health: '/api/health',
+      version: '1.0.0',
+    });
+  });
+
   // Setup Socket.IO
   setupSocket(httpServer);
   console.log('[Socket] IO namespace /chat ready');
